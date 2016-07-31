@@ -1,0 +1,24 @@
+Ce projet est en fait un tutoriel sur la classification via Keras (https://youtu.be/iZuf87ONclU)
+
+Le code est un peu (voir très très) crade, .... en fait il est carrément DEGUEULASSE!!!!!!
+
+Mais il fait le taff, donc ...
+
+Il vous faudra à minima des logs ModSecurity pour jouer avec, et installer les requirements python (Keras, numpy et nltk et ).
+
+Set de donnée modsecurity : tst2.data (à fournir) => juste le contenu du log modsec, et rien d'autre.
+
+Les fichiers générés seront :
+
+Sauvegarde du set de données : tst-clean.data
+Et les sauvegarde du modele et des poids en .h5 et .json
+
+
+
+J'ai laissé les commentaires de debug du code, histoire de vous laisser jouer avec (ou parce que j'ai la flemme, à vous de voir ...)
+
+
+installation (en local histoire d'éviter de cradosser votre install plus que de raison ;) et Utilisation :
+
+pip install -r requirements.txt -t lib
+THEANO_FLAGS="device=gpu,floatX=float32" PYTHONPATH=lib/ python data-cleanup.py
