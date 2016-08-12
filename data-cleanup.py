@@ -50,32 +50,24 @@ def TrainingDataFromTXT():
 			y_train.append([TestXSS(line),TestSQL(line),TestOther(line)])
 	print ("Parsed %d sentences." % (len(ret)))
 
-	# Tokenize the sentences into words
-	tokenized_sentences = ret #[nltk.word_tokenize(sent) for sent in ret]
-	 
 	# Count the word frequenciesx
-	word_freq = nltk.FreqDist(itertools.chain(*tokenized_sentences))
+	word_freq = nltk.FreqDist(itertools.chain(*ret))
 	print ("Found %d unique words tokens." % len(word_freq.items()))
 	 
 	# Get the most common words and build index_to_word and word_to_index vectors
 	vocab = word_freq.most_common(vocabulary_size-1)
 	index_to_word = [x[0] for x in vocab]
-	#index_to_word.append(unknown_token)
 	word_to_index = dict([(w,i) for i,w in enumerate(index_to_word)])
 
 	print ("Using vocabulary size %d." % vocabulary_size)
 	print ("The least frequent word in our vocabulary is '%s' and appeared %d times." % (vocab[-1][0], vocab[-1][1]))
 	 
 	# Replace all words not in our vocabulary with the unknown token
-	for i, sent in enumerate(tokenized_sentences):
-	    tokenized_sentences[i] = [w if w in word_to_index else unknown_token for w in sent]
-	 
-	print ("\nExample sentence: '%s'" % ret[0])
-	print ("\nExample sentence after Pre-processing: '%s'" % tokenized_sentences[0])
+	for i, sent in enumerate(ret):
+	    ret[i] = [w if w in word_to_index else unknown_token for w in sent]
 	 
 	# Create the training data
-	X_train = np.asarray([[word_to_index[w] for w in sent] for sent in tokenized_sentences])
-	#y_train = np.asarray([[word_to_index[w] for w in sent[1:]] for sent in tokenized_sentences])
+	X_train = np.asarray([[word_to_index[w] for w in sent] for sent in ret])
 
 	pickle.dump({"X":X_train,"Y":y_train,"iw":index_to_word,"wi":word_to_index},open(trainingSet,"wb"))
 	return X_train,y_train,index_to_word,word_to_index
@@ -134,11 +126,6 @@ def TestOther(str):
 	return 0
 
 X,Y,iw,wi=TrainingData()
-#print(X)
-#print(Y)
-#print(iw)
-#print(wi)
-
 ############################## AI STUFF
 '''Train a recurrent convolutional network on the IMDB sentiment
 classification task.
@@ -165,7 +152,7 @@ lstm_output_size = 70
 batch_size = 5
 nb_epoch = 2
 # 3 éléments de classification : XSS, SQL, Fpt
-nb_classes = 3
+nb_classes = nb_classi
 
 '''
 Note:
@@ -173,32 +160,21 @@ batch_size is highly sensitive.
 Only 2 epochs are needed as the dataset is very small.
 '''
 
-#print('Loading data...')
-#(X_train, y_train), (X_test, y_test) = imdb.load_data(nb_words=max_features, test_split=0.2)
 
 def SaveModel(model):
-	#pickle.dump({"config":model.get_config(),"weight":model.get_weights()},open(trainingSet+".model","wb"))
 	print('Sauvegarde du modele')
 	model_json = model.to_json()
 	with open(trainingSet+".json", "w") as json_file:
 		json_file.write(model_json)
-	# serialize weights to HDF5
 	model.save_weights(trainingSet+".h5")
 
 def TrainModel(X,Y):
-	#if os.path.isfile(trainingSet+'.model'): 
-	#	data = pickle.load( open( trainingSet+'.model', "rb" ) )
-	#	print(data)
-	#	model = layer_from_config(data['config'])
-	#	model.set_weights(data['weight'])
-	#	return model
 	if os.path.isfile(trainingSet+'.json'):
 		print('Récupération du modele...') 
 		json_file = open(trainingSet+".json", 'r')
 		loaded_model_json = json_file.read()
 		json_file.close()
 		loaded_model = model_from_json(loaded_model_json)
-		# load weights into new model
 		loaded_model.load_weights(trainingSet+".h5")
 		return loaded_model
 	return TrainModel_Data(X,Y)
@@ -209,18 +185,6 @@ def TrainModel_Data(X,Y):
 
 	y_train = np.array(Y)
 	y_test  = np.array(Y[:100])
-
-	print(len(X_train), 'train sequences')
-	print(len(X_test), 'test sequences')
-
-#	print(X_train)
-#	print(y_train)
-
-	print('X_train shape:', X_train.shape)
-	print('X_test shape:', X_test.shape)
-
-	print('y_train shape:', y_train.shape)
-	print('y_test shape:', y_test.shape)
 
 	print('Build model...')
 
@@ -236,7 +200,6 @@ def TrainModel_Data(X,Y):
 	model.add(LSTM(lstm_output_size))
 	model.add(Dense(nb_classes))
 	model.add(Activation('sigmoid'))
-	#model.add(Activation('softmax'))
 	model.compile(loss='categorical_crossentropy',optimizer='adam')
 	print('Train...')
 	model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=nb_epoch,validation_data=(X_test, y_test))
@@ -245,21 +208,21 @@ def TrainModel_Data(X,Y):
 	SaveModel(model)
 	return model
 
-print(X[:1])
-#print(X[0])
-t=[iw[t] for t in X[0]]
-#print(t)
 model = TrainModel(X,Y)
-tst = model.predict(sequence.pad_sequences(np.array(X[:1]), maxlen=maxlen))
-print(tst)
-#weight=model.get_weights()[4][0]
-#itera=0
-#diff=len(weight)-len(X[0])
-#print("Weight : %d X[0] : %d" %(len(weight),len(X[0])))
 
-#for w in weight[diff:]:
-#	print("Score : %f IndexW : %d Word : %s = %f" %(w,X[0][itera],iw[X[0][itera]],w*X[0][itera]))
-#	itera=itera+1
+if len(sys.argv)>1:
+	ret = []
+	for line in sys.stdin:
+		data = re.sub(r'[\W.:]+', ' ', line)
+		sentences = itertools.chain(*[nltk.sent_tokenize(x.lower()) for x in data.split(' ')])
+		sentences = ["%s" % (x) for x in sentences]
+		ret.append(sentences)
 
-#print(model.get_config())
-#print(model.get_weights())
+		for i, sent in enumerate(ret):
+			ret[i] = [w if w in wi else "modsecurity" for w in sent]
+	Z = np.asarray([[wi[w] for w in sent] for sent in ret])
+	print(model.predict(sequence.pad_sequences(Z, maxlen=maxlen)))
+else:
+	print("Default example")
+	print(model.predict(sequence.pad_sequences(np.array(X[:4]), maxlen=maxlen)))
+	print(model.predict(sequence.pad_sequences(np.array(X[52:53]), maxlen=maxlen)))
